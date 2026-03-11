@@ -1,22 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Container, Col, Form, Button, Card, Row, Badge } from 'react-bootstrap';
+import { useMutation } from '@apollo/client';
 
 import Auth from '../utils/auth';
-import { saveTitle, searchOmdb } from '../utils/API';
+import { searchOmdb } from '../utils/API';
+import { SAVE_TITLE } from '../utils/mutations';
 import { saveTitleIds, getSavedTitleIds } from '../utils/localStorage';
 
 const SearchTitles = () => {
-  // returned OMDb search data
   const [searchedTitles, setSearchedTitles] = useState([]);
-  // search input
   const [searchInput, setSearchInput] = useState('');
-  // optional filter (movie / series)
   const [typeFilter, setTypeFilter] = useState('');
-
-  // saved imdbIDs
   const [savedTitleIds, setSavedTitleIds] = useState(getSavedTitleIds());
 
-  // persist ids on unmount
+  const [saveTitle] = useMutation(SAVE_TITLE);
+
   useEffect(() => {
     return () => saveTitleIds(savedTitleIds);
   }, [savedTitleIds]);
@@ -38,13 +36,14 @@ const SearchTitles = () => {
         return;
       }
 
-      // Normalize OMDb fields to our app shape
       const titleData = (data.Search || []).map((item) => ({
         imdbID: item.imdbID,
         title: item.Title,
         year: item.Year,
-        type: item.Type, // movie | series | episode
+        type: item.Type,
         poster: item.Poster && item.Poster !== 'N/A' ? item.Poster : '',
+        plot: '',
+        imdbRating: '',
         imdbLink: `https://www.imdb.com/title/${item.imdbID}/`,
       }));
 
@@ -58,13 +57,14 @@ const SearchTitles = () => {
   const handleSaveTitle = async (imdbID) => {
     const titleToSave = searchedTitles.find((t) => t.imdbID === imdbID);
 
-    const token = Auth.loggedIn() ? Auth.getToken() : null;
-    if (!token) return false;
+    if (!Auth.loggedIn()) return false;
 
     try {
-      const response = await saveTitle(titleToSave, token);
-
-      if (!response.ok) throw new Error('Save failed');
+      await saveTitle({
+        variables: {
+          input: titleToSave,
+        },
+      });
 
       setSavedTitleIds([...savedTitleIds, titleToSave.imdbID]);
     } catch (err) {
