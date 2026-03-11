@@ -106,4 +106,8 @@ Add your OMDb key:
 VITE_OMDB_API_KEY=YOUR_KEY
 ```
 
+## Author
+
+Marc Gomes
+
 
